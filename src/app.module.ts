@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
+import { TenantMiddleware } from './middleware/tenant.middleware';
 import { ConfigModule } from '@nestjs/config';
 import { HospitalModule } from './hospital/hospital.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -16,4 +17,8 @@ import { AppController } from './app.controller';
   ],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}
