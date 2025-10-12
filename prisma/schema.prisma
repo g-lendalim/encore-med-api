@@ -20,12 +20,19 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum Sex {
+  MALE
+  FEMALE
+}
+
 model Hospital {
   id        String   @id @default(cuid())
   name      String  
   timezone  String
   smtpId    String?  @unique
   smtp      Smtp?    @relation("HospitalSmtp", fields: [smtpId], references: [id])
+  adminId   String   @unique
+  admin     User     @relation("HospitalAdmin", fields: [adminId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -53,8 +60,11 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
-  name      String?
+  name      String
+  dob       DateTime
+  sex       Sex
   role      Role     @default(PATIENT)
+  hospitalAdmin Hospital?   @relation("HospitalAdmin")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -70,6 +80,7 @@ model Staff {
   user       User     @relation(fields: [userId], references: [id])
   userId     String   @unique
   role       Role     @default(STAFF)
+  position   String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -77,12 +88,18 @@ model Staff {
 }
 
 model Patient {
-  id         String   @id @default(cuid())
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String   @unique
-  hospital   Hospital @relation(fields: [hospitalId], references: [id])
-  hospitalId String
-  createdAt  DateTime @default(now())
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @unique
+  hospital     Hospital @relation(fields: [hospitalId], references: [id])
+  hospitalId   String
+  allergies    String
+  underlyingDiseases String[]
+  medications       String[]
+  diagnosis    String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   appointments Appointment[]
 

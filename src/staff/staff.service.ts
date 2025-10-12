@@ -22,24 +22,27 @@ export class StaffService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user = await this.prisma.user.create({
+    const userWithStaff = await this.prisma.user.create({
       data: {
         email: data.email,
         name: data.name,
         password: hashedPassword,
+        dob: new Date(data.dob),
+        sex: data.sex,
         role: Role.STAFF,
+        staff: {
+          create: {
+            hospitalId,
+            position: data.position, // doctor, nurse, pharmacist, etc.
+          },
+        },
+      },
+      include: {
+        staff: true,
       },
     });
 
-    const staff = await this.prisma.staff.create({
-      data: {
-        hospitalId,
-        userId: user.id,
-        role: data.role || Role.STAFF,
-      },
-    });
-
-    return { ...staff, user };
+    return userWithStaff;
   }
 
   async getAllStaff(hospitalId: string) {
@@ -57,21 +60,35 @@ export class StaffService {
 
     if (!staff) throw new NotFoundException('Staff not found');
 
+    const updates: Promise<any>[] = [];
+
+    // Update user data (name/password/dob/sex)
     const userData: Partial<User> = {};
     if (data.name) userData.name = data.name;
     if (data.password) userData.password = await bcrypt.hash(data.password, 10);
+    if (data.dob) userData.dob = new Date(data.dob);
+    if (data.sex) userData.sex = data.sex;
 
-    await this.prisma.user.update({
-      where: { id: staff.userId },
-      data: userData,
-    });
-
-    if (data.role) {
-      await this.prisma.staff.update({
-        where: { id: staffId },
-        data: { role: data.role },
-      });
+    if (Object.keys(userData).length > 0) {
+      updates.push(
+        this.prisma.user.update({
+          where: { id: staff.userId },
+          data: userData,
+        }),
+      );
     }
+
+    // Update position if provided
+    if (data.position) {
+      updates.push(
+        this.prisma.staff.update({
+          where: { id: staffId },
+          data: { position: data.position },
+        }),
+      );
+    }
+
+    await Promise.all(updates);
 
     return this.prisma.staff.findUnique({
       where: { id: staffId },
@@ -85,6 +102,7 @@ export class StaffService {
     });
     if (!staff) throw new NotFoundException('Staff not found');
 
+    // Delete both Staff + linked User
     await this.prisma.staff.delete({ where: { id: staffId } });
     await this.prisma.user.delete({ where: { id: staff.userId } });
 

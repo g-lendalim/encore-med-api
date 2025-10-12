@@ -1,4 +1,31 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsDateString,
+  IsEnum,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { Sex } from '@prisma/client';
+
+class AdminInfo {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  name: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsDateString()
+  dob: string;
+
+  @IsEnum(Sex)
+  sex: Sex;
+}
 
 export class CreateHospitalDto {
   @IsString()
@@ -7,13 +34,7 @@ export class CreateHospitalDto {
   @IsString()
   timezone: string;
 
-  @IsEmail()
-  adminEmail: string;
-
-  @IsString()
-  adminName: string;
-
-  @IsString()
-  @MinLength(8)
-  adminPassword: string;
+  @ValidateNested()
+  @Type(() => AdminInfo)
+  admin: AdminInfo;
 }
