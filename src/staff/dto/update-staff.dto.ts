@@ -1,5 +1,11 @@
-import { Role } from '@prisma/client';
-import { IsOptional, IsString, MinLength, IsEnum } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  MinLength,
+  IsDateString,
+  IsEnum,
+} from 'class-validator';
+import { Sex } from '@prisma/client';
 
 export class UpdateStaffDto {
   @IsOptional()
@@ -7,10 +13,19 @@ export class UpdateStaffDto {
   name?: string;
 
   @IsOptional()
-  @MinLength(8)
+  @IsString()
+  @MinLength(6)
   password?: string;
 
   @IsOptional()
-  @IsEnum(Role)
-  role?: Role;
+  @IsString()
+  position?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dob?: string;
+
+  @IsOptional()
+  @IsEnum(Sex)
+  sex?: Sex;
 }
