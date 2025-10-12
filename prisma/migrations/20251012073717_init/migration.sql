@@ -115,6 +115,9 @@ CREATE TABLE "RefreshToken" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Hospital_name_key" ON "Hospital"("name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Hospital_smtpId_key" ON "Hospital"("smtpId");
 
 -- CreateIndex

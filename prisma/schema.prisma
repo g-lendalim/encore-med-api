@@ -22,7 +22,7 @@ enum AppointmentStatus {
 
 model Hospital {
   id        String   @id @default(cuid())
-  name      String
+  name      String  
   timezone  String
   smtpId    String?  @unique
   smtp      Smtp?    @relation("HospitalSmtp", fields: [smtpId], references: [id])
