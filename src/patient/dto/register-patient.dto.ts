@@ -1,28 +1,23 @@
 import {
   IsEmail,
-  IsNotEmpty,
   IsString,
   MinLength,
   IsDateString,
   IsEnum,
   IsOptional,
 } from 'class-validator';
-import { Role, Sex } from '@prisma/client';
+import { Sex } from '@prisma/client';
 
-export class CreateStaffDto {
+export class RegisterPatientDto {
   @IsEmail()
   email: string;
 
   @IsString()
-  @IsNotEmpty()
   name: string;
 
   @IsString()
   @MinLength(8)
   password: string;
-
-  @IsString()
-  position: string; // doctor, nurse, pharmacist
 
   @IsDateString()
   dob: string;
@@ -30,7 +25,16 @@ export class CreateStaffDto {
   @IsEnum(Sex)
   sex: Sex;
 
+  @IsString()
+  hospitalId: string;
+
   @IsOptional()
-  @IsEnum(Role)
-  role?: Role;
+  @IsString()
+  allergies?: string;
+
+  @IsOptional()
+  underlyingDiseases?: string[];
+
+  @IsOptional()
+  medications?: string[];
 }

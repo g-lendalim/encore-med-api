@@ -6,8 +6,7 @@ import {
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from '@prisma/client';
-import type { User } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -29,7 +28,7 @@ export class StaffService {
         password: hashedPassword,
         dob: new Date(data.dob),
         sex: data.sex,
-        role: Role.STAFF,
+        role: data.role || Role.STAFF,
         staff: {
           create: {
             hospitalId,
