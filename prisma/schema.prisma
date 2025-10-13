@@ -112,6 +112,7 @@ model Doctor {
   hospitalId   String
   name         String
   specialty    String?
+  bio          String?
   slotDuration Int      @default(30)
   createdAt    DateTime @default(now())
 
