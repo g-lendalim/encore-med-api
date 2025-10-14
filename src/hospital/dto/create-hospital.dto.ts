@@ -7,12 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export enum SexEnum {
-  MALE = 'MALE',
-  FEMALE = 'FEMALE',
-  OTHER = 'OTHER',
-}
+import { Sex } from '@prisma/client';
 
 class AdminInfo {
   @IsEmail()
@@ -28,8 +23,8 @@ class AdminInfo {
   @IsDateString()
   dob: string;
 
-  @IsEnum(SexEnum)
-  sex: SexEnum;
+  @IsEnum(Sex)
+  sex: Sex;
 }
 
 export class CreateHospitalDto {
