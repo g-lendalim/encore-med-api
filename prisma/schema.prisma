@@ -146,6 +146,7 @@ model Appointment {
   endAt      DateTime
   status     AppointmentStatus @default(PENDING)
   createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([hospitalId, startAt])
   @@index([doctorId, startAt])

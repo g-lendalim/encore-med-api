@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { WorkingHoursDto } from './dto/working-hours.dto';
-import { DateTime, Interval } from 'luxon';
+import { generateDoctorSlots } from 'src/utils/slot-generator.util';
 
 @Injectable()
 export class DoctorService {
@@ -147,80 +147,14 @@ export class DoctorService {
     dateString: string | undefined,
     timezone: string,
   ) {
+    // 1. Ensure this doctor actually belongs to the hospital
     await this.ensureDoctorInHospital(hospitalId, doctorId);
 
-    const targetDate = dateString
-      ? DateTime.fromISO(dateString, { zone: timezone }).startOf('day')
-      : DateTime.now().setZone(timezone).startOf('day');
+    // 2. Fallback to today's date if none provided
+    const dateToUse = dateString ?? new Date().toISOString();
 
-    const dbDay = targetDate.weekday % 7;
-
-    const doctor = await this.prisma.doctor.findUnique({
-      where: { id: doctorId },
-    });
-    if (!doctor) throw new NotFoundException('Doctor not found');
-
-    const workingHours = await this.prisma.workingHours.findMany({
-      where: { doctorId, dayOfWeek: dbDay },
-      orderBy: { startTime: 'asc' },
-    });
-    if (workingHours.length === 0) return [];
-
-    const dayStart = targetDate.startOf('day').toJSDate();
-    const dayEnd = targetDate.endOf('day').toJSDate();
-
-    const appointments = await this.prisma.appointment.findMany({
-      where: {
-        doctorId,
-        startAt: { gte: dayStart, lt: dayEnd },
-        status: { not: 'CANCELLED' },
-      },
-      select: { startAt: true, endAt: true },
-    });
-
-    const appointmentIntervals = appointments.map((appointment) =>
-      Interval.fromDateTimes(
-        DateTime.fromJSDate(appointment.startAt).setZone(timezone),
-        DateTime.fromJSDate(appointment.endAt).setZone(timezone),
-      ),
-    );
-
-    const slots: Array<{ start: string; end: string; available: boolean }> = [];
-
-    for (const workingHour of workingHours) {
-      const [sh, sm] = workingHour.startTime.split(':').map(Number);
-      const [eh, em] = workingHour.endTime.split(':').map(Number);
-
-      let periodStart = targetDate
-        .set({ hour: sh, minute: sm })
-        .setZone(timezone);
-      const periodEnd = targetDate
-        .set({ hour: eh, minute: em })
-        .setZone(timezone);
-
-      const slotMinutes = doctor.slotDuration ?? 30;
-
-      while (periodStart.plus({ minutes: 0 }) < periodEnd) {
-        const slotEnd = periodStart.plus({ minutes: slotMinutes });
-        if (slotEnd > periodEnd) break;
-
-        const slotInterval = Interval.fromDateTimes(periodStart, slotEnd);
-        const overlaps = appointmentIntervals.some((appointmentInterval) =>
-          appointmentInterval.overlaps(slotInterval),
-        );
-
-        slots.push({
-          start: periodStart.toISO() ?? '',
-          end: slotEnd.toISO() ?? '',
-          available: !overlaps,
-        });
-
-        periodStart = periodStart.plus({ minutes: slotMinutes });
-      }
-    }
-
-    slots.sort((a, b) => a.start.localeCompare(b.start));
-    return slots;
+    // 3. Delegate slot generation to the shared utility
+    return await generateDoctorSlots(doctorId, dateToUse, timezone);
   }
 
   private async ensureDoctorInHospital(hospitalId: string, doctorId: string) {

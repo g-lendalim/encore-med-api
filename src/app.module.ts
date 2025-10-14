@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { StaffModule } from './staff/staff.module';
 import { PatientModule } from './patient/patient.module';
 import { DoctorModule } from './doctor/doctor.module';
+import { AppointmentModule } from './appointment/appointment.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DoctorModule } from './doctor/doctor.module';
     StaffModule,
     PatientModule,
     DoctorModule,
+    AppointmentModule,
   ],
   controllers: [AppController],
 })
