@@ -9,6 +9,10 @@ import { StaffModule } from './staff/staff.module';
 import { PatientModule } from './patient/patient.module';
 import { DoctorModule } from './doctor/doctor.module';
 import { AppointmentModule } from './appointment/appointment.module';
+import { PrismaService } from './prisma/prisma.service';
+import { SmtpService } from './smtp/smtp.service';
+import { SmtpController } from './smtp/smtp.controller';
+import { MailService } from './mail.service';
 
 @Module({
   imports: [
@@ -23,7 +27,8 @@ import { AppointmentModule } from './appointment/appointment.module';
     DoctorModule,
     AppointmentModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, SmtpController],
+  providers: [PrismaService, SmtpService, MailService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

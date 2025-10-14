@@ -9,10 +9,16 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { generateDoctorSlots } from '../utils/slot-generator.util';
 import { AppointmentStatus } from '@prisma/client';
+import { MailService } from '../mail.service';
+import { format } from 'date-fns';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AppointmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   /**
    * STEP 1: Create appointment → Status: PENDING
@@ -56,7 +62,29 @@ export class AppointmentService {
         endAt: new Date(endAt),
         status: AppointmentStatus.PENDING,
       },
+      include: {
+        patient: { include: { user: true } },
+        doctor: true,
+      },
     });
+
+    const patientEmail = appointment.patient?.user?.email;
+    const patientName = appointment.patient?.user?.name;
+    const doctorName = appointment.doctor?.name;
+    const dateString = format(appointment.startAt, 'PPpp');
+
+    if (patientEmail) {
+      await this.mailService.sendMail(
+        hospitalId,
+        patientEmail,
+        'Booking Confirmation',
+        `<p>Dear ${patientName},</p>
+         <p>Your appointment with Dr. ${doctorName} is successfully booked and pending confirmation.</p>
+         <p><strong>Date:</strong> ${dateString}</p>
+         <p>Thank you for choosing our hospital!</p>`,
+      );
+      Logger.log(`📨 Booking email sent to ${patientEmail}`);
+    }
 
     return {
       message: 'Appointment created and pending confirmation',
@@ -117,7 +145,29 @@ export class AppointmentService {
     const confirmed = await this.prisma.appointment.update({
       where: { id },
       data: { status: AppointmentStatus.CONFIRMED },
+      include: {
+        patient: { include: { user: true } },
+        doctor: true,
+      },
     });
+
+    const patientEmail = confirmed.patient?.user?.email;
+    const patientName = confirmed.patient?.user?.name;
+    const doctorName = confirmed.doctor?.name;
+    const dateString = format(confirmed.startAt, 'PPpp');
+
+    if (patientEmail) {
+      await this.mailService.sendMail(
+        confirmed.hospitalId,
+        patientEmail,
+        'Appointment Confirmed',
+        `<p>Dear ${patientName},</p>
+         <p>Your appointment with Dr. ${doctorName} has been <strong>confirmed</strong>.</p>
+         <p><strong>Date:</strong> ${dateString}</p>
+         <p>We look forward to seeing you!</p>`,
+      );
+      Logger.log(`✅ Confirmation email sent to ${patientEmail}`);
+    }
 
     return {
       message: '✅ Appointment confirmed successfully',
@@ -131,13 +181,38 @@ export class AppointmentService {
   async cancelAppointment(id: string) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
+      include: {
+        patient: { include: { user: true } },
+        doctor: true,
+      },
     });
     if (!appointment) throw new NotFoundException('Appointment not found');
 
     const cancelled = await this.prisma.appointment.update({
       where: { id },
       data: { status: AppointmentStatus.CANCELLED },
+      include: {
+        patient: { include: { user: true } },
+        doctor: true,
+      },
     });
+
+    const patientEmail = cancelled.patient?.user?.email;
+    const patientName = cancelled.patient?.user?.name;
+    const doctorName = cancelled.doctor?.name;
+    const dateString = format(cancelled.startAt, 'PPpp');
+
+    if (patientEmail) {
+      await this.mailService.sendMail(
+        cancelled.hospitalId,
+        patientEmail,
+        'Appointment Cancelled',
+        `<p>Dear ${patientName},</p>
+       <p>Your appointment with Dr. ${doctorName} scheduled for <strong>${dateString}</strong> has been <strong>cancelled</strong>.</p>
+       <p>If this was a mistake, please book again through the hospital portal.</p>`,
+      );
+      Logger.log(`🛑 Cancellation email sent to ${patientEmail}`);
+    }
 
     return {
       message: 'Appointment cancelled successfully',
@@ -183,7 +258,10 @@ export class AppointmentService {
   async updateAppointment(id: string, dto: UpdateAppointmentDto) {
     const existing = await this.prisma.appointment.findUnique({
       where: { id },
-      include: { doctor: { include: { hospital: true } } },
+      include: {
+        patient: { include: { user: true } },
+        doctor: { include: { hospital: true } },
+      },
     });
     if (!existing) throw new NotFoundException('Appointment not found');
 
@@ -223,7 +301,35 @@ export class AppointmentService {
         endAt: endAt ? new Date(endAt) : undefined,
         status,
       },
+      include: {
+        patient: { include: { user: true } },
+        doctor: true,
+      },
     });
+
+    // ✅ Send notification if doctor/time changed
+    const timeChanged =
+      startAt && new Date(startAt).getTime() !== existing.startAt.getTime();
+    const doctorChanged = doctorId && doctorId !== existing.doctorId;
+
+    if ((timeChanged || doctorChanged) && updated.patient?.user?.email) {
+      const patientEmail = updated.patient.user.email;
+      const patientName = updated.patient.user.name;
+      const doctorName = updated.doctor?.name;
+      const dateString = format(updated.startAt, 'PPpp');
+
+      await this.mailService.sendMail(
+        updated.hospitalId,
+        patientEmail,
+        'Appointment Updated',
+        `<p>Dear ${patientName},</p>
+       <p>Your appointment has been <strong>updated</strong>.</p>
+       <p><strong>Doctor:</strong> Dr. ${doctorName}</p>
+       <p><strong>New Date:</strong> ${dateString}</p>
+       <p>Please check your portal for the latest details.</p>`,
+      );
+      Logger.log(`🔁 Update email sent to ${patientEmail}`);
+    }
 
     return {
       message: 'Appointment updated successfully',
@@ -250,5 +356,44 @@ export class AppointmentService {
     });
     if (!appointment) throw new NotFoundException('Appointment not found');
     return appointment;
+  }
+
+  async cancelAppointmentForPatient(id: string, patientId: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    if (appointment.patientId !== patientId)
+      throw new ForbiddenException('You cannot cancel this appointment');
+    return this.cancelAppointment(id);
+  }
+
+  async getAppointmentsByPatient(patientId: string) {
+    return this.prisma.appointment.findMany({
+      where: { patientId },
+      include: { doctor: true, hospital: true },
+    });
+  }
+
+  async getAppointmentByIdForPatient(id: string, patientId: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+    });
+    if (!appointment) throw new NotFoundException('Appointment not found');
+    if (appointment.patientId !== patientId)
+      throw new ForbiddenException('You cannot access this appointment');
+    return appointment;
+  }
+
+  async getUpcomingAppointments(patientId: string) {
+    return this.prisma.appointment.findMany({
+      where: {
+        patientId,
+        status: AppointmentStatus.CONFIRMED,
+        startAt: { gte: new Date() },
+      },
+      orderBy: { startAt: 'asc' },
+      include: { doctor: true, hospital: true },
+    });
   }
 }
