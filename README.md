@@ -1,98 +1,192 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <a href="http://nestjs.com/" target="_blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="NestJS Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# Encore Med Backend
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A **hospital appointment management system** built with **NestJS, TypeScript, and PostgreSQL**.
 
-## Description
+This backend handles **multi-hospital appointment scheduling**, staff and patient management, doctor schedules, timezone-aware operations, and automated email notifications.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## Table of Contents
 
-```bash
-$ npm install
+* [Features](#features)
+* [Architecture & Code Structure](#architecture--code-structure)
+* [System Flow](#system-flow)
+* [Project Setup](#project-setup)
+* [Running Tests](#running-tests)
+* [Deployment](#deployment)
+* [Resources](#resources)
+* [License](#license)
+
+---
+
+## Features
+
+### General
+
+* **NestJS + TypeScript** backend with **RESTful API**.
+* **JWT-based authentication** for all non-public endpoints; includes expiry and refresh token support.
+* **Role-based access control (RBAC)**: patient, staff, admin.
+* **Multi-tenancy**: each hospital is logically isolated; schema optimized for 1–2 million records.
+* **Timezone handling**: all date/time operations respect the hospital’s timezone via `X-Timezone` header.
+* **Hospital-specific SMTP** for outgoing emails.
+* **Email notifications** for appointment events: booked, confirmed, modified, or cancelled.
+
+### Admin Features
+
+* Automatically generate **default admin account** when a hospital is created.
+* Manage hospitals, staff accounts, and permissions.
+
+### Staff Features
+
+* Manage doctors: add/edit/remove profiles, set specialties, bio, and slot durations.
+* Define **doctor working schedules** by day of the week.
+* View doctor-wise appointment schedules.
+* Book, confirm, modify, or cancel **appointments on behalf of patients**.
+* Manage hospital details and staff permissions.
+
+### Patient Features
+
+* Register and manage account.
+* Browse hospitals and doctors with availability.
+* Book appointments if both doctor and slot are available.
+* Receive **email notifications** for appointment events (booked, confirmed, modified, cancelled).
+* View and cancel upcoming appointments.
+* Appointment status flows: **Pending → Confirmed → Completed**, managed by staff.
+
+### Scheduled Tasks (CRON)
+
+***Email reminders** sent 1 day before appointments.
+
+---
+
+## Architecture & Code Structure
+
+The backend is organized using **NestJS best practices** with modular architecture:
+
+```
+src/
+├─ appointment/         # Handles appointment scheduling, status updates, notifications
+├─ auth/                # JWT auth, login, logout, refresh, registration
+├─ doctor/              # Doctor profiles, working hours, slot generation
+├─ hospital/            # Hospital management and multi-tenancy
+├─ patient/             # Patient registration and profile management
+├─ staff/               # Staff management and permissions
+├─ smtp/                # SMTP integration per hospital
+├─ prisma/              # Prisma client, database models and relations
+├─ middleware/          # Tenant middleware to scope requests per hospital
+├─ utils/               # Helper functions like slot generation
+├─ mail.module.ts       # Mail service module
+├─ mail.service.ts      # Handles sending emails
+├─ reminder.service.ts  # Scheduled email reminders
+├─ main.ts              # Entry point
 ```
 
-## Compile and run the project
+**Middleware**
+
+* **Tenant Middleware (`tenant.middleware.ts`)**
+
+  * Ensures multi-tenancy by **scoping requests to the correct hospital**.
+  * Reads hospital identifier from request headers or JWT.
+  * Sets the hospital context so all service calls (appointments, doctors, patients, staff) are correctly filtered for that hospital.
+
+**Modules Overview**
+
+* **Appointment Module**: creation, updating, cancellation, timezone-aware scheduling, and email notifications.
+* **Doctor Module**: doctor profiles, specialties, working hours, and slot generation.
+* **Hospital Module**: hospital registration, multi-tenancy enforcement, and admin account creation.
+* **Patient Module**: registration, profile management, and appointment browsing/booking.
+* **Staff Module**: staff management, permissions, appointment handling for patients.
+* **Auth Module**: login, logout, JWT authentication, refresh tokens, RBAC.
+* **SMTP Module**: hospital-specific SMTP integration for email notifications.
+* **Prisma Module**: database ORM, relationships, indexing for performance.
+* **Utils**: helper functions like slot generator and timezone handling.
+
+---
+
+## System Flow
+
+1. **Hospital Creation**
+
+   * Admin account automatically generated.
+   * Hospital operates in its own timezone.
+   * Tenant middleware ensures all requests are scoped to the correct hospital.
+
+2. **Admin Operations**
+
+   * Manage staff accounts, hospital details, and permissions.
+
+3. **Staff Operations**
+
+   * Manage doctors, working hours, and appointment slots.
+   * Book, confirm, modify, or cancel appointments for patients.
+
+4. **Patient Operations**
+
+   * Register and browse hospitals/doctors.
+   * Book appointments if doctor and slot available.
+   * Receive **email notifications** for booked, confirmed, modified, or cancelled appointments.
+
+5. **Appointment Status Flow**
+
+   * **Pending → Confirmed → Completed**
+   * Staff updates status; system triggers notifications automatically.
+
+6. **Scheduled Tasks**
+
+   * CRON jobs send **email reminders** 1 day before appointments.
+
+---
+
+## Project Setup
 
 ```bash
-# development
-$ npm run start
+# Install dependencies
+$ npm install
 
-# watch mode
+# Development mode
 $ npm run start:dev
 
-# production mode
+# Production mode
 $ npm run start:prod
 ```
 
-## Run tests
+---
+
+## Running Tests
 
 ```bash
-# unit tests
+# Unit tests
 $ npm run test
 
-# e2e tests
+# End-to-end tests
 $ npm run test:e2e
 
-# test coverage
+# Test coverage
 $ npm run test:cov
 ```
 
+---
+
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+* Docker support with `docker-compose.yml` for local development.
+* Can deploy to **Render, Vercel, Heroku**, or any cloud platform.
+* **Swagger API documentation** included for testing and review.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
 ## Resources
 
-Check out a few resources that may come in handy when working with NestJS:
+* [NestJS Documentation](https://docs.nestjs.com)
+* [NestJS Discord](https://discord.gg/G7Qnnhy)
+* [NestJS Devtools](https://devtools.nestjs.com)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT License
