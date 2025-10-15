@@ -1,0 +1,34 @@
+services:
+  api:
+    image: node:20-alpine
+    container_name: hospital_api
+    working_dir: /src
+    volumes:
+      - ./:/src
+      - ./prisma:/prisma
+      - /src/node_modules
+    ports:
+      - '3000:3000'
+    command: sh -c "npm install && npx prisma generate && npm run start:dev"
+    environment:
+      DATABASE_URL: postgres://9a3010e74ec7bca8591fe93d0a3855a87d0a0fc566695948cdce3801009464be:sk_T1Q5RYp-BYACja0kzZ71v@db.prisma.io:5432/postgres?sslmode=require
+      ACCESS_TOKEN_EXPIRES_IN: 1h
+      REFRESH_TOKEN_EXPIRES_IN: 30d
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: encore_med_db
+    restart: always
+    environment:
+      POSTGRES_USER: encore_med_user
+      POSTGRES_PASSWORD: encore_med_password
+      POSTGRES_DB: encore_med
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
