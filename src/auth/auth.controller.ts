@@ -1,35 +1,44 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Role } from '@prisma/client';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { RegisterDto } from './dto/register.dto';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(
-    @Body('email') email: string,
-    @Body('password') password: string,
-    @Body('role') role: Role,
-  ) {
-    return this.authService.register(email, password, role);
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'User registered successfully' })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto.email, dto.password, dto.role);
   }
 
   @Post('login')
-  async login(
-    @Body('email') email: string,
-    @Body('password') password: string,
-  ) {
-    return this.authService.login(email, password);
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({ status: 200, description: 'User logged in successfully' })
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('refresh')
-  async refresh(@Body('refresh_token') refreshToken: string) {
-    return this.authService.refresh(refreshToken);
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Access token refreshed successfully',
+  })
+  async refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto.refresh_token);
   }
 
   @Post('logout')
-  async logout(@Body('refressh_token') refreshToken: string) {
-    return this.authService.logout(refreshToken);
+  @ApiOperation({ summary: 'Logout user by invalidating refresh token' })
+  @ApiResponse({ status: 200, description: 'User logged out successfully' })
+  async logout(@Body() dto: LogoutDto) {
+    return this.authService.logout(dto.refresh_token);
   }
 }
