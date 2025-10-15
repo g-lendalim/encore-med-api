@@ -29,7 +29,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(@Body('refresh_token') refreshToken: string) {
+  async logout(@Body('refressh_token') refreshToken: string) {
     return this.authService.logout(refreshToken);
   }
 }

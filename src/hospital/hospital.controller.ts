@@ -14,12 +14,16 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
+@ApiTags('Hospitals')
 @Controller('hospitals')
 export class HospitalController {
   constructor(private readonly hospitalService: HospitalService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new hospital with admin' })
+  @ApiResponse({ status: 201, description: 'Hospital created successfully' })
   async create(@Body() dto: CreateHospitalDto) {
     return this.hospitalService.createHospital(dto);
   }

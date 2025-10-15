@@ -7,6 +7,10 @@ export class UpdateAppointmentDto {
   doctorId?: string;
 
   @IsOptional()
+  @IsString()
+  patientId?: string;
+
+  @IsOptional()
   @IsISO8601()
   startAt?: string;
 
