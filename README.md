@@ -174,7 +174,6 @@ $ npm run test:cov
 ## Deployment
 
 * Docker support with `docker-compose.yml` for local development.
-* Can deploy to **Render, Vercel, Heroku**, or any cloud platform.
 * **Swagger API documentation** included for testing and review.
 
 ---
